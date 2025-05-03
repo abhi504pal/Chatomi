@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Chatomi</string>
+    <string name="send_message">send message</string>
+    <string name="type_message">type message</string>
+    <string name="no_chats_available">No chat available</string>
+    <string name="online_status">Connected</string>
+    <string name="offline_status">Offline</string>
+    <string name="connection_error">Error Connecting</string>
+    <string name="connecting_status">connecting</string>
+    <string name="retry">retry</string>
+    <string name="error_loading_chats">Error ion loading chats\n</string>
+    <string name="clear_chats">clear chat</string>
+</resources>
