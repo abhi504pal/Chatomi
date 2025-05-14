@@ -30,10 +30,10 @@ object AppModule {
     @Singleton
     fun provideChatDatabase(@ApplicationContext context: Context): ChatDatabase {
         return Room.databaseBuilder(
-            context,
-            ChatDatabase::class.java,
-            ChatDatabase.DATABASE_NAME
-        ).fallbackToDestructiveMigration().build()
+                context,
+                ChatDatabase::class.java,
+                ChatDatabase.DATABASE_NAME
+            ).fallbackToDestructiveMigration(false).build()
     }
 
     @Provides
@@ -52,7 +52,13 @@ object AppModule {
             getChats = GetChats(repository),
             sendMessage = SendMessage(repository),
             retryFailedMessages = RetryFailedMessages(repository),
-            clearChats = ClearChats(repository)
+            clearChats = ClearChats(repository),
+            observeAllChats = ObserveAllChatsUseCase(repository),
+            getUniqueChatName = GenerateUniqueChatNameUseCase(repository),
+            createNewChat = CreateNewChatUseCase(repository),
+            deleteChat = DeleteChatUseCase(repository),
+            generateBotReply = GenerateBotReplyUseCase(repository),
+            getMessagesForChat = GetMessagesForChatUseCase(repository)
         )
     }
 

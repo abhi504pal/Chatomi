@@ -117,7 +117,6 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     override suspend fun generateBotReply(userMessage: String): String {
-        // Simple bot logic - you can replace with more sophisticated AI later
         return when {
             userMessage.contains("hello", ignoreCase = true) -> "Hello there! How can I help you today?"
             userMessage.contains("help", ignoreCase = true) -> "I'm here to assist you. What do you need?"

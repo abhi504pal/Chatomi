@@ -5,22 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.abhi.chatomi.data.remote.PieSocketService
 import com.abhi.chatomi.domain.model.Chat
 import com.abhi.chatomi.domain.model.Message
-import com.abhi.chatomi.domain.repository.ChatRepository
+import com.abhi.chatomi.domain.usecase.ChatUseCases
 import com.abhi.chatomi.presentation.chat.state.ChatState
 import com.abhi.chatomi.presentation.chat.state.ConnectionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
-
 @HiltViewModel
 class ChatViewModel @Inject constructor(
-    private val chatRepository: ChatRepository,
+    private val chatUseCases: ChatUseCases,
     private val pieSocketService: PieSocketService
 ) : ViewModel() {
 
@@ -43,7 +44,6 @@ class ChatViewModel @Inject constructor(
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     init {
-
         loadChats()
         setupSocketConnection()
         observeChatUpdates()
@@ -72,7 +72,7 @@ class ChatViewModel @Inject constructor(
 
     private fun observeChatUpdates() {
         viewModelScope.launch {
-            chatRepository.observeAllChats().collect { chatList ->
+            chatUseCases.observeAllChats().collect { chatList ->
                 _chats.value = chatList
                 _state.value = ChatState.SUCCESS
             }
@@ -81,10 +81,10 @@ class ChatViewModel @Inject constructor(
 
     fun loadChats() {
         viewModelScope.launch {
-            chatRepository.clearAllData()
+            chatUseCases.clearChats()
             _state.value = ChatState.LOADING
             try {
-                _chats.value = chatRepository.getAllChats()
+                _chats.value = chatUseCases.getChats()
                 _state.value = ChatState.SUCCESS
             } catch (e: Exception) {
                 _error.value = e.message
@@ -96,8 +96,8 @@ class ChatViewModel @Inject constructor(
     fun createNewChat() {
         viewModelScope.launch {
             try {
-                val chatName = chatRepository.generateUniqueChatName()
-                val newChat = chatRepository.createNewChat(chatName)
+                val chatName = chatUseCases.getUniqueChatName()
+                val newChat = chatUseCases.createNewChat(chatName)
                 _selectedChat.value = newChat
                 _messages.value = emptyList()
 
@@ -120,7 +120,7 @@ class ChatViewModel @Inject constructor(
     private fun loadMessagesForChat(chatId: String) {
         viewModelScope.launch {
             try {
-                _messages.value = chatRepository.getMessagesForChat(chatId)
+                _messages.value = chatUseCases.getMessagesForChat(chatId)
             } catch (e: Exception) {
                 _error.value = "Failed to load messages: ${e.message}"
                 _state.value = ChatState.ERROR
@@ -129,7 +129,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private suspend fun sendBotMessage(chatId: String, content: String) {
-        chatRepository.sendMessage(chatId, content, false, connectionState.value)
+        chatUseCases.sendMessage(chatId, content, false, connectionState.value)
         loadMessagesForChat(chatId)
     }
 
@@ -138,8 +138,8 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // Send user message
-                if(chatRepository.sendMessage(chatId, message, true,connectionState.value)){
-                    val botReply = chatRepository.generateBotReply(message)
+                if(chatUseCases.sendMessage(chatId, message, true,connectionState.value)){
+                    val botReply = chatUseCases.generateBotReply(message)
                     sendBotMessage(chatId, botReply)
                 }
 
@@ -155,7 +155,7 @@ class ChatViewModel @Inject constructor(
     fun retryFailedMessages() {
         viewModelScope.launch {
             try {
-                chatRepository.retryFailedMessages()
+                chatUseCases.retryFailedMessages()
                 _selectedChat.value?.id?.let { loadMessagesForChat(it) }
             } catch (e: Exception) {
                 _error.value = "Failed to retry messages: ${e.message}"
@@ -173,7 +173,7 @@ class ChatViewModel @Inject constructor(
         val chatId = _selectedChat.value?.id ?: return
         viewModelScope.launch {
             try {
-                chatRepository.deleteChat(chatId)
+                chatUseCases.deleteChat(chatId)
                 _selectedChat.value = null
                 _messages.value = emptyList()
                 loadChats()
@@ -187,7 +187,7 @@ class ChatViewModel @Inject constructor(
     fun clearAllData() {
         viewModelScope.launch {
             try {
-                chatRepository.clearAllData()
+                chatUseCases.clearChats()
                 _selectedChat.value = null
                 _messages.value = emptyList()
                 loadChats()
@@ -200,7 +200,7 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         CoroutineScope(Dispatchers.IO).async {
-            chatRepository.clearAllData()
+            chatUseCases.clearChats()
             pieSocketService.disconnect()
         }
         super.onCleared()
